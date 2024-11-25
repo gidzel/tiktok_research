@@ -48,8 +48,8 @@ Retrieve information about videos:
 ```python
 videos = ttr.get_videos_by_usernames(
     usernames = ['dummy1', 'dummy2'],
-    start_date=datetime(2023, 1, 1),
-    end_date=datetime(2024, 10, 31),
+    start_date = datetime(2023, 1, 1),
+    end_date = datetime(2024, 10, 31),
     fields = VideoFields.all()
 )
 print(videos)
@@ -59,9 +59,9 @@ print(videos)
 ```python
 videos = ttr.get_videos_by_hashtags(
     hashtags = ['foryoupage'],
-    region_codes= [RegionCodes.germany, RegionCodes.austria],
-    start_date=datetime(2024, 11, 20),
-    end_date=datetime(2024, 11, 25),
+    region_codes = [RegionCodes.germany, RegionCodes.austria],
+    start_date = datetime(2024, 11, 20),
+    end_date = datetime(2024, 11, 25),
     fields = VideoFields.all()
 )
 print(videos)
@@ -71,8 +71,8 @@ print(videos)
 ```python
 videos = ttr.get_videos_by_music_ids(
     music_ids = [1234567890, 2345678901],
-    start_date=datetime(2024, 11, 20),
-    end_date=datetime(2024, 11, 25),
+    start_date = datetime(2024, 11, 20),
+    end_date = datetime(2024, 11, 25),
     fields = VideoFields.all()
 )
 print(videos)
@@ -103,11 +103,11 @@ print(user)
 
 ```python
 followers = ttr.get_user_followers(
-    username='dummy'
+    username = 'dummy'
 )
 
 following = ttr.get_user_following(
-    username='dummy'
+    username = 'dummy'
 )
 
 print(followers, following)
@@ -129,7 +129,7 @@ print(comments)
 
 ```python
 reposts = ttr.get_user_reposts(
-    username='alice_weidel_afd',
+    username = 'dummy',
     fields = VideoSmallFields.all()
 )
 print(reposts)
@@ -139,7 +139,7 @@ print(reposts)
 
 ```python
 pinned_videos = ttr.get_user_pinned_videos(
-    username='alice_weidel_afd',
+    username = 'dummy',
     fields = VideoSmallFields.all()
 )
 print(pinned_videos)

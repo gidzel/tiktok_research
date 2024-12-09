@@ -5,6 +5,7 @@ from .tiktok_research_enums import *
 from bs4 import BeautifulSoup
 import json
 import os
+import time
 
 class TikTokResearch():
     def __init__(self, client_key, client_secret):
@@ -15,7 +16,12 @@ class TikTokResearch():
         self.access_token = ''
         self.token_type = ''
         self.expires_in = 0
+        self.expire_ts = 0
         self.get_token()
+        # 1 day timedelta as workaround for TTAPI bug. Max 30 days possible
+        # see: https://stackoverflow.com/questions/79023955/tiktok-query-videos-research-api-getting-search-id-is-invalid-or-expired
+        self.time_delta = timedelta(days=30)
+        self.max_count = 100
 
     def get_token(self):
         res = self.session.post(
@@ -35,10 +41,14 @@ class TikTokResearch():
             self.access_token = res_obj['access_token']
             self.token_type = res_obj['token_type']
             self.expires_in = res_obj['expires_in']
+            self.expire_ts =  int(time.time()) + self.expires_in
         else:
             raise Exception(f"Failed to obtain access token: {res.text}")
 
     def api_request(self, node:ApiNodes, query, fields):
+        if int(time.time()) > self.expire_ts:
+            print("token expired - getting new one")
+            self.get_token()
         res = self.session.post(
             url = urljoin(self.base_address, node.value), 
             headers={
@@ -53,15 +63,17 @@ class TikTokResearch():
         if res.status_code == 200:
             error = res.json().get('error', {})
             if error['code'] != 'ok':
-                raise Exception(f"{error['code']}: {error['message']}")
+                raise Exception(f"{error['code']}: {error['message']}\nLOG ID: {error['log_id']}")
             return res.json().get('data', {})
         elif res.status_code == 400:
             error = res.json().get('error', {})
-            raise Exception(f"{error['code']}: {error['message']}")
+            raise Exception(f"{error['code']}: {error['message']}\nLOG ID: {error['log_id']}")
         else:
             return None
 
     def get_user(self, username: str, fields:list[UserFields]=UserFields.all()):
+        if username == None:
+            return None
         fields = ','.join([f.value for f in fields])
         return self.api_request(
             node=ApiNodes.userinfo,
@@ -81,38 +93,53 @@ class TikTokResearch():
         end_date:datetime = datetime.now(), 
         fields:list[VideoFields]=VideoFields.all()
     ):
-        td = timedelta(days=30)
         fields = ','.join([f.value for f in fields])
         videos = []
         temp_start_date = start_date
-        temp_end_date = start_date+td
+        temp_end_date = start_date + self.time_delta
+        if temp_end_date > end_date:
+            temp_end_date = end_date
 
         while(temp_start_date < end_date):
             cursor = 0
             search_id = ""
             has_more = True
+            main_query = {}
+            res = {}
+            count_none_res = 0
             while has_more:
                 try:
+                    print(temp_start_date.strftime("%Y%m%d"), temp_end_date.strftime("%Y%m%d"), cursor, search_id)
                     res = self.video_query(
-                        query={
+                        query = {
                             "query": query,
-                            "max_count": 100,
+                            "max_count": self.max_count,
                             "start_date": temp_start_date.strftime("%Y%m%d"),
                             "end_date": temp_end_date.strftime("%Y%m%d"),
                             "cursor": cursor,
-                            "search_id": search_id
+                            'search_id': search_id
                         },
                         fields=fields
                     )
-                    cursor = res['cursor']
-                    search_id = res['search_id']
-                    has_more = res['has_more']
-                    videos += res['videos']
+                    if res == None: #some request dont return result
+                        count_none_res += 1
+                        if count_none_res < 60:#sometimes the api hangs
+                            break
+                        else:
+                            continue
+                    count_none_res = 0
                 except Exception as e:
                     print(e)
-                    return videos
-            temp_start_date += td
-            temp_end_date += td
+                    print("try again")
+                    continue #handle the bug "Search Id XXXX is invalid or expired"
+
+                cursor = res['cursor']
+                search_id = res['search_id']
+                has_more = res['has_more']
+                videos += res['videos']
+
+            temp_start_date += self.time_delta
+            temp_end_date += self.time_delta
             if temp_end_date > end_date:
                 temp_end_date = end_date
         return videos
@@ -196,7 +223,7 @@ class TikTokResearch():
         item_name: str,
         fields = None,
     ):
-        query['max_count'] = 100
+        query['max_count'] = self.max_count
         query['cursor'] = 0
         items = []
         has_more = True
@@ -320,20 +347,46 @@ class TikTokResearch():
         tt_script = soup.find('script', attrs={'id':"__UNIVERSAL_DATA_FOR_REHYDRATION__"})
         if tt_script != None:
             tt_json = json.loads(tt_script.string)
-            tt_video_url = (tt_json["__DEFAULT_SCOPE__"]['webapp.video-detail']
-                ['itemInfo']['itemStruct']['video']['playAddr'])
+            tt_video_url = (tt_json.get("__DEFAULT_SCOPE__", {}).get('webapp.video-detail', {}).get(
+                'itemInfo', {}).get('itemStruct', {}).get('video', {}).get('playAddr', ''))
         else:
+            print("try alternative")
             tt_script = soup.find('script', attrs={'id':"SIGI_STATE"})
             tt_json = json.loads(tt_script.string)
-            tt_video_url = tt_json['ItemModule'][video_id]['video']['downloadAddr']
-        
-        tt_video = requests.get(
-            tt_video_url, 
-            allow_redirects=True, 
-            headers=headers,
-            cookies=cookies
-            )
+            tt_video_url = tt_json.get('ItemModule', {}).get(video_id, {}).get('video', {}).get('downloadAddr', '')
+        if tt_video_url == '':
+            print("download_video: Found no video URL for", username, str(video_id))
+            return None
+        try:
+            tt_video = requests.get(
+                tt_video_url, 
+                allow_redirects=True, 
+                headers=headers,
+                cookies=cookies
+                )
+        except Exception as e:
+            print(e)
+            return None
         video_fn = os.path.join(path, username+'_'+str(video_id)+'.mp4')
         with open(video_fn, 'wb') as fn:
             fn.write(tt_video.content)
         return video_fn
+
+    def download_avatar(self, user, path):
+        if ('display_name' in user) and ('avatar_url' in user):
+            headers={'Authorization': 'Bearer '+self.access_token,}
+            try:
+                avatar = requests.get(
+                    user['avatar_url'], 
+                    allow_redirects=True,
+                    headers=headers
+                )
+            except Exception as e:
+                print(e)
+                return None
+            avatar_path = os.path.join(path, 'avatar_'+user['display_name']+'.jpg')
+            with open(avatar_path, 'wb') as fn:
+                fn.write(avatar.content)
+            return avatar_path
+        else:
+            return None

@@ -5,3 +5,4 @@ from .tiktok_research_enums import VideoFields
 from .tiktok_research_enums import CommentFields
 from .tiktok_research_enums import RegionCodes
 from .tiktok_research import TikTokResearch
+from .tiktok_research_db import TikTokResearchDb

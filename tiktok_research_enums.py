@@ -4,8 +4,15 @@ class ExtendedEnum(Enum):
     @classmethod
     def all(self):
         return list(self)
+    @classmethod
     def all_values(self):
         return list(map(lambda c: c, self))
+    @classmethod
+    def to_dict(self):
+        return {c.name: c.value for c in self}
+    @classmethod
+    def to_rev_dict(self):
+        return {c.value: c.name for c in self}
 
 class ApiNodes(ExtendedEnum):
     token = 'oauth/token/'

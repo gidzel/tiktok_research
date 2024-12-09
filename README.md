@@ -145,6 +145,33 @@ pinned_videos = ttr.get_user_pinned_videos(
 print(pinned_videos)
 ```
 
+## Using the DB Wrapper
+### Initialization
+Import `TikTokResearchDb` and init it with your credentials and db-path, files-path
+```python
+from tiktok_research import TikTokResearchDb, VideoFields, UserFields, RegionCodes
+from datetime import datetime
+
+ttr = TikTokResearchDb(
+    client_key='your_client_key', 
+    client_secret='your_client_secret',
+    db_path='path_to_your.sqlite',
+    files_path='tiktok-videos'
+)
+```
+
+### Example for scraping by hashtags
+
+```python
+ttr.scrape_videos_by_hashtag(
+    hashtags=['fyp', 'cats'], 
+    region_codes=[RegionCodes.germany],
+    start_date=datetime(2024, 1, 1),
+    end_date=datetime.now(),
+    download=False # Flag for toggleing video and avatar download
+)
+```
+
 ## API Reference
 
 For a detailed API reference, consult the official TikTok Research API documentation: [TikTok Research API Docs](https://developers.tiktok.com/doc/about-research-api).

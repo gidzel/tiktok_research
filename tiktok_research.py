@@ -8,7 +8,7 @@ import os
 import time
 
 class TikTokResearch():
-    def __init__(self, client_key, client_secret):
+    def __init__(self, client_key, client_secret, deltadays=1):
         self.session = requests.Session()
         self.base_address = 'https://open.tiktokapis.com/v2/'
         self.client_key = client_key
@@ -20,7 +20,7 @@ class TikTokResearch():
         self.get_token()
         # 1 day timedelta as workaround for TTAPI bug. Max 30 days possible
         # see: https://stackoverflow.com/questions/79023955/tiktok-query-videos-research-api-getting-search-id-is-invalid-or-expired
-        self.time_delta = timedelta(days=30)
+        self.time_delta = timedelta(days=deltadays)
         self.max_count = 100
 
     def get_token(self):
@@ -123,20 +123,22 @@ class TikTokResearch():
                     )
                     if res == None: #some request dont return result
                         count_none_res += 1
-                        if count_none_res < 60:#sometimes the api hangs
-                            break
-                        else:
+                        if count_none_res < 10:#sometimes the api hangs, but when there is no result its the same pattern
+                            time.sleep(2)
                             continue
+                        else:
+                            break
                     count_none_res = 0
                 except Exception as e:
                     print(e)
                     print("try again")
+                    time.sleep(2)
                     continue #handle the bug "Search Id XXXX is invalid or expired"
 
-                cursor = res['cursor']
-                search_id = res['search_id']
-                has_more = res['has_more']
-                videos += res['videos']
+                cursor = res.get('cursor', cursor)
+                search_id = res.get('search_id', search_id)
+                has_more = res.get('has_more', True)
+                videos += res.get('videos', [])
 
             temp_start_date += self.time_delta
             temp_end_date += self.time_delta
@@ -234,6 +236,8 @@ class TikTokResearch():
                     query = query,
                     fields = fields
                 )
+                if res == None:
+                    break
                 query['cursor'] = res['cursor']
                 has_more = res['has_more']
                 items += res[item_name]
@@ -341,6 +345,7 @@ class TikTokResearch():
         url = 'https://www.tiktok.com/@'+username+"/video/"+str(video_id)
         headers={'Authorization': 'Bearer '+self.access_token,}
         tt = self.session.get(url, headers=headers)
+        print(tt)
         cookies = tt.cookies
         soup = BeautifulSoup(tt.text, "html.parser")
         tt_video_url = ''
@@ -352,7 +357,11 @@ class TikTokResearch():
         else:
             print("try alternative")
             tt_script = soup.find('script', attrs={'id':"SIGI_STATE"})
+            if tt_script == None:
+                print(tt.text)
+                return
             tt_json = json.loads(tt_script.string)
+            print(tt_json)
             tt_video_url = tt_json.get('ItemModule', {}).get(video_id, {}).get('video', {}).get('downloadAddr', '')
         if tt_video_url == '':
             print("download_video: Found no video URL for", username, str(video_id))

@@ -6,3 +6,16 @@ from .tiktok_research_enums import CommentFields
 from .tiktok_research_enums import RegionCodes
 from .tiktok_research import TikTokResearch
 from .tiktok_research_db import TikTokResearchDb
+from .peewee_db_model import db
+from .peewee_db_model import User
+from .peewee_db_model import Region
+from .peewee_db_model import Video
+from .peewee_db_model import Hashtag
+from .peewee_db_model import HashtagOnVideo
+from .peewee_db_model import Effect
+from .peewee_db_model import EffectOnVideo
+from .peewee_db_model import Comment
+from .peewee_db_model import UserOnUser
+from .peewee_db_model import UserOnVideo
+from .peewee_db_model import Playlist
+from .peewee_db_model import VideoOnPlaylist

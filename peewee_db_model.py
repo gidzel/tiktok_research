@@ -8,13 +8,13 @@ class BaseModel(Model):
 
 class User(BaseModel):
     username = TextField(unique=True)
+    displayname = TextField(null=True) #This is the user's profile name that is found under the username.
     following_cnt = IntegerField(null=True) #This is the number of people that a public user follows.
     follower_cnt = IntegerField(null=True) #This is the total number of followers that follow the user.
     like_cnt = IntegerField(null=True) #This is the total number of likes accumulated by the user.
     video_cnt = IntegerField(null=True) #This is the total number of videos that the user has posted on their TikTok account.
     bio = TextField(null=True) #This is the description in the bio of the user. If the user does not have a description, this will be returned blank.
     bio_url = TextField(null=True) #The public URL in the user's bio will be shared here.
-    # displayname = TextField(null=True) #This is the user's profile name that is found under the username.
     avatar_url = TextField(null=True) #This is the URL of the user's profile picture.
     avatar_path = TextField(null=True)
     is_verified = BooleanField(null=True) #This returns the information on whether the user has been verified. All verified users will have "blue tick" next to their username. If the user has a blue tick, this variable will return a "true" in the response.
@@ -48,7 +48,7 @@ class Video(BaseModel):
     label_vote = BooleanField(default=False)
 
 class Hashtag(BaseModel):
-    tt_id = IntegerField()#Returns the unique hashtag_ids for each hashtag.
+    tt_id = BigIntegerField()#Returns the unique hashtag_ids for each hashtag.
     name = TextField(unique=True)
     desc = TextField(null=True)#Returns a description for a hashtag_name if one exists.
 
@@ -70,12 +70,12 @@ class EffectOnVideo(BaseModel):
 
 class Comment(BaseModel):
     create_time = DateTimeField(null=True)#This is the time when the comment was posted on a video.
-    tt_id = IntegerField(unique=True)#This is the unique comment ID for a comment posted on a video.
+    tt_id = BigIntegerField(unique=True)#This is the unique comment ID for a comment posted on a video.
     like_cnt = IntegerField(default=0)#The total number of likes for a comment under a video, created by users by clicking the “Heart” icon.
     parent = ForeignKeyField('self', backref='childs', null=True)#This is the unique ID of the parent comment when the user responds to another user's comment. If the comment was directly entered for a video, this ID is the same as the Video ID.
     reply_cnt = IntegerField(default=0)#This is the total number of replies on a particular comment.
-    text = TextField()#This is the actual text of the comment entered on a video. To protect the privacy of our users, other information is removed.
-    video = ForeignKeyField(Video, backref='comments')#This is the video ID for which the comment was entered.
+    text = TextField(null=True)#This is the actual text of the comment entered on a video. To protect the privacy of our users, other information is removed.
+    video = ForeignKeyField(Video, backref='comments', null=True)#This is the video ID for which the comment was entered.
 
 class UserOnUser(BaseModel):#Following
     following = ForeignKeyField(User, backref='follower')
